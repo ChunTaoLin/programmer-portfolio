@@ -1,0 +1,1 @@
+This folder holds same code for projects that I've been a part of
