@@ -1,0 +1,161 @@
+//Without clogging up to much of this file here is just the pathfinding code that I did the majority of and fixed
+//bugs alongside my partner during this particular assignment.
+
+// This function finds a path between two given start and end positions
+void APathFindingActor::FindPath(const FVector2D& startPos, const FVector2D& endPos, UPARAM(ref) TArray<FVector>& pathArray)
+{
+	// Reset the grid to its original value
+	GridActor->ResetGridValues();
+
+	// Is the start position equal to the end position?
+	if (startPos.X == endPos.X &&
+		startPos.Y == endPos.Y)
+	{
+		// If yes, then return nothing
+		return;
+	}
+
+	//makes sure the destination is valid
+	if (FMath::RoundToInt(endPos.X) >= GridActor->GetGridSizeX() || FMath::RoundToInt(endPos.Y) >= GridActor->GetGridSizeY()
+		|| FMath::RoundToInt(endPos.X) < 0 || FMath::RoundToInt(endPos.Y) < 0)
+	{
+		//if yes, then return nothing
+		return;
+	}
+
+	if (GridActor->GetNode(endPos.X, endPos.Y).isWall == true)
+	{
+		// If yes, then return nothing
+		return;
+	}
+
+	// Turn the start and end positions into full-on grid nodes
+	FGridNode startNode = GridActor->GetNode(FMath::RoundToInt(startPos.X), FMath::RoundToInt(startPos.Y));
+	FGridNode endNode = GridActor->GetNode(FMath::RoundToInt(endPos.X), FMath::RoundToInt(endPos.Y));
+
+	int bestIndex = 0;
+	int smallestNum = 10000;
+
+	int distanceToNeighbor = 0;
+
+	TArray<FGridNode> openList = TArray<FGridNode>();
+	TArray<FGridNode> closeList = TArray<FGridNode>();
+	TArray<FGridNode> neighbors = TArray<FGridNode>();
+
+	FGridNode currentNode = FGridNode();
+
+	startNode.isWall = GridActor->GetNode(startNode.x, startNode.y).isWall;
+
+	startNode.x = startPos.X;
+	startNode.y = startPos.Y;
+
+	startNode.value = 0;
+
+	startNode.position.X = GridActor->GetNode(startNode.x, startNode.y).position.X;
+	startNode.position.Y = GridActor->GetNode(startNode.x, startNode.y).position.Y;
+
+	GridActor->SetGridNodeValue(startNode.x, startNode.y, 0);
+
+	openList.Add(startNode);
+
+
+	// This while loop will continue to run until the entire open list has been emptied
+	while (openList.Num() > 0)
+	{
+		// Find the best index from the open list
+		bestIndex = FindBestIndex(openList, endNode);
+
+		// Set the current node to the best node and make sure
+		// to delete it from the open list and add it to the closed list
+		currentNode = openList[bestIndex];
+		openList.RemoveAt(bestIndex);
+		closeList.Add(currentNode);
+
+		// Get all neighbors of the best node
+		neighbors = FindNeighbors(currentNode);
+		distanceToNeighbor = currentNode.value + 1;
+
+
+		//Search grid but only set neighbor if the visited node is a neighbor of current node, based on positions
+		for (int i = 0; i < neighbors.Num(); i++)
+		{
+			// Has the neighbor been evaluated yet and is it not a wall?
+			if (neighbors[i].value > distanceToNeighbor && neighbors[i].isWall == false)
+			{
+				// If yes, then add it to the open list with its correct value
+				neighbors[i].value = distanceToNeighbor;
+				GridActor->SetGridNodeValue(neighbors[i].x, neighbors[i].y, distanceToNeighbor);
+				openList.Add(neighbors[i]);
+
+			}
+		}
+
+
+		// Is the current node equal to the end node?
+		if (currentNode.position == endNode.position)
+		{
+			// If yes, then start to back track
+
+			TArray<FVector> path = TArray<FVector>();
+			path.Add(currentNode.position);
+
+			int countBeforeKick = 0;
+
+			while (true)
+			{
+				// Find all neighbors of the current node
+				neighbors = FindNeighbors(currentNode);
+
+				//Search grid but only set neighbor if the visited node is a neighbor of current node, based on positions These searches the grid and makes sure the node is a neighbor of the currentNode
+				for (int i = 0; i < neighbors.Num(); i++)
+				{
+					// is the current neighbor selected the smallest number and not a wall?
+					if (neighbors[i].value < smallestNum && neighbors[i].isWall == false)
+					{
+						// If yes, then set it to the current node
+						currentNode = neighbors[i];
+						smallestNum = currentNode.value;
+					}
+				}
+
+				if (path[path.Num() - 1] == currentNode.position)
+				{
+
+				}
+				else if (path[path.Num() - 1] != currentNode.position && currentNode.isWall == false)
+					// Add the current node to the path
+					path.Add(currentNode.position);
+
+				// Has the start node been reached?
+				if (currentNode.x == startNode.x &&
+					currentNode.y == startNode.y)
+				{
+					// If yes then invert the path
+					for (int i = path.Num(); i > 0; i--)
+					{
+						pathArray.Add(path[i - 1]);
+					}
+					return;
+				}
+
+				if (path.Num() == 0)
+				{
+					return;
+				}
+
+				//Extra safety feature
+				countBeforeKick++;
+
+				if (countBeforeKick > 30000)
+				{
+					return;
+				}
+			}
+
+		}
+
+	}
+	// If the open list has been emptied and
+	// there is still no match, return nothing
+	return;
+}

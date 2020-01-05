@@ -1,0 +1,51 @@
+   //Following code was developed during my Fall 2019 game physics class.
+   
+   //For Position and rotation, know both euler and kinematic versions
+	void updatePositionEulerExplicit(float deltaTime)
+	{
+        pos += vel * deltaTime;//position
+
+        vel += accel * deltaTime;//velocity
+    }
+
+	void updateRotationKinematic(float deltaTime)
+    {
+        //For AngVel
+        Quaternion pureQuat = new Quaternion(angVel.x, angVel.y, angVel.z, 0);
+        Quaternion tmpQuat = pureQuat * rot;
+
+        //Eulers method 
+        angVel += angAccel * deltaTime * deltaTime;
+        rot.x += tmpQuat.x * deltaTime / 2.0f;
+        rot.y += tmpQuat.y * deltaTime / 2.0f;
+        rot.z += tmpQuat.z * deltaTime / 2.0f;
+        rot.w += tmpQuat.w * deltaTime / 2.0f;
+
+        //For AngAccel
+        Quaternion pureQuat2 = new Quaternion(angAccel.x, angAccel.y, angAccel.z, 0);
+        Quaternion tmpQuat2 = pureQuat2 * rot;
+
+        //Kinematic
+        rot.x += tmpQuat.x * deltaTime + 0.5f * (tmpQuat2.x * deltaTime * deltaTime);
+        rot.y += tmpQuat.y * deltaTime + 0.5f * (tmpQuat2.y * deltaTime * deltaTime);
+        rot.z += tmpQuat.z * deltaTime + 0.5f * (tmpQuat2.z * deltaTime * deltaTime);
+        rot.Normalize();
+    }
+
+
+//Generating Torque
+	public static Vector3 GenerateTorque(Vector3 pointOfAppliedForce, Vector3 centerOfMass,Vector3 incomingForceAmt)
+    {
+        Vector3 newVal;
+        
+        newVal = pointOfAppliedForce - centerOfMass;
+        newVal = Vector3.Cross(newVal, incomingForceAmt);
+        return newVal;
+    }
+
+//Example of one of many forces that was developed for our engine
+	public static Vector3 GenerateForce_Gravity(float particleMass,float gravitationalConstant,Vector3 worldUp)
+    {
+        Vector3 f_gravity = particleMass * gravitationalConstant * worldUp;
+        return f_gravity;
+    }

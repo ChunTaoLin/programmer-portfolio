@@ -1,0 +1,73 @@
+  //Following code was developed during my Fall 2019 game physics class.
+   
+  //I've done work with Circle, and OBB collisions as well
+  //Function call for Collisions AABB - AABB
+    CollisionInfo TestCollisionAABBToAABB(CollisionHull3D colA, CollisionHull3D colB)
+    {
+        CollisionInfo col = new CollisionInfo();
+
+        col.AABBColA = new AABBC();
+        col.AABBColB = new AABBC();
+
+        col.col0 = colA;
+        col.col1 = colB;
+
+        //Centers
+        col.AABBColA.pos = col.col0.transform.position;
+        col.AABBColB.pos = col.col1.transform.position;
+
+        //Corners
+        col.AABBColA = GenerateCorners(col.AABBColA, colA);
+        col.AABBColB = GenerateCorners(col.AABBColB, colB);
+
+        //Check
+        if (!(col.AABBColA.maxCorner.x >= col.AABBColB.minCorner.x && col.AABBColA.maxCorner.y >= col.AABBColB.minCorner.y &&
+            col.AABBColB.maxCorner.x >= col.AABBColA.minCorner.x && col.AABBColB.maxCorner.y >= col.AABBColA.minCorner.y &&
+            col.AABBColA.maxCorner.z >= col.AABBColB.minCorner.z && col.AABBColA.maxCorner.z >= col.AABBColB.minCorner.z &&
+            col.AABBColB.maxCorner.z >= col.AABBColA.minCorner.z && col.AABBColB.maxCorner.z >= col.AABBColA.minCorner.z))
+        {
+            TurnOffCollidingMaterial(colA, colB);
+            col.status = false;
+            return col;
+        }
+
+        TurnOnCollidingMaterial(colA, colB);
+        col.status = true;
+        return col;
+    }
+	
+	//Generates Corners AABB
+    AABBC GenerateCorners(AABBC AABBCol, CollisionHull3D col)
+    {
+        AABBCol.minCorner = new Vector3(AABBCol.pos.x - col.GetComponent<BoxColScript>().GetHalfSize().x, AABBCol.pos.y - col.GetComponent<BoxColScript>().GetHalfSize().y, AABBCol.pos.z - col.GetComponent<BoxColScript>().GetHalfSize().z);
+        AABBCol.maxCorner = new Vector3(AABBCol.pos.x + col.GetComponent<BoxColScript>().GetHalfSize().x, AABBCol.pos.y + col.GetComponent<BoxColScript>().GetHalfSize().y, AABBCol.pos.z + col.GetComponent<BoxColScript>().GetHalfSize().z);
+
+        return AABBCol;
+    }
+	
+	void ResolveCollision(CollisionInfo info)
+    {
+        //-----for Resolving Collisions
+        // Calculate relative velocity
+        Vector3 rv = info.col1.GetComponent<Particle3D>().getVelocity() - info.col0.GetComponent<Particle3D>().getVelocity();
+
+        // Calculate relative velocity in terms of the normal direction
+        float velAlongNormal = Vector3.Dot(rv, (info.contacts[0].normal));
+
+        // Do not resolve if velocities are separating
+        if (velAlongNormal > 0)
+            return;
+
+        // Calculate restitution
+        float e = Mathf.Min(info.contacts[0].restitution, info.contacts[1].restitution);
+
+        // Calculate impulse scalar
+        float j = -(1.0f + e) * velAlongNormal;
+        j /= (info.col0.GetComponent<Particle3D>().getInvMass()) + (info.col1.GetComponent<Particle3D>().getInvMass());
+
+        // Apply impulse
+        Vector3 impulse = j * info.contacts[0].normal;
+
+		info.col0.GetComponent<Particle3D>().minusEqualVel(info.col0.GetComponent<Particle3D>().getInvMass() * impulse);
+        info.col1.GetComponent<Particle3D>().updateVel(info.col1.GetComponent<Particle3D>().getInvMass() * impulse);
+    }
