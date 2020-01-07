@@ -1,0 +1,3 @@
+WASD traditional movement
+Left Mouse Click is shoot in direction character is facing
+Node Based Movement, So press W/A/S/D once to select the node in that direction
