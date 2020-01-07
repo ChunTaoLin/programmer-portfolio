@@ -1,0 +1,3 @@
+This demo shows the custom physics engine that I made during my Fall 2019 Game Physics class
+It can handle collision detection and response with AABB, Circle and OBB combinations.
+The red line indicate where the projectile will spawn from. Then gravity will pull the projectile down. 
