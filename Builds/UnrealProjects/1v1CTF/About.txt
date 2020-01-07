@@ -1,3 +1,0 @@
-This game is a 1v1, you and an AI will make their way to the center for the flag. 
-Eventually there will be a firefight between you and the AI. Both must dodge and hit the other to safetly grab the flag
-and return to base. 
