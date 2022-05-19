@@ -1,0 +1,171 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class StockManagerScript : MonoBehaviour
+{
+
+    //All Items in the Game
+
+    //Produce
+    GameObject applePrefab;
+    GameObject orangePrefab;
+    GameObject potatoPrefab;
+    GameObject bananaPrefab;
+
+    //Animal Products
+    GameObject milkPrefab;
+    GameObject cheesePrefab;
+
+    //Drugs/Medicine
+    GameObject advilPrefab;
+    GameObject tylenolPrefab;
+
+    //Produce
+    public List<GameObject> allProduce = new List<GameObject>();
+    public int [,] allProduceiDandAmt;
+    public int[,] produceToBuy;
+    public List<GameObject> produceObjectsToBuy = new List<GameObject>();
+
+    //Animal Products
+    public List<GameObject> allAnimalProduce;
+    public int[,] allAnimalProduceiDandAmt;
+    public int[,] animalProduceToBuy;
+    public List<GameObject> animalProduceObjectsToBuy;
+
+    //Drugs and Medicine
+    public List<GameObject> allDrugs;
+    public int[,] allDrugsiDandAmt;
+    public int[,] drugsToBuy;
+    public List<GameObject> drugsObjectsToBuy;
+
+    GameObject selectedProduce;
+    GameObject selectedAnimalProduce;
+    GameObject selectedDrug;
+
+    float[] buyPrices;
+    bool init = false;
+    int produceID = 0;
+
+    public void Init()
+    {
+        //Load Resources
+        applePrefab = Resources.Load("Apple") as GameObject;
+        orangePrefab = Resources.Load("Orange") as GameObject;
+        potatoPrefab = Resources.Load("Potato") as GameObject;
+        bananaPrefab = Resources.Load("Banana") as GameObject;
+
+        buyPrices = new float[4];
+        buyPrices[0] = applePrefab.GetComponent<ItemDataLoader>().GetItemData().buyPrice;
+        buyPrices[1] = orangePrefab.GetComponent<ItemDataLoader>().GetItemData().buyPrice;
+        buyPrices[2] = potatoPrefab.GetComponent<ItemDataLoader>().GetItemData().buyPrice;
+        buyPrices[3] = bananaPrefab.GetComponent<ItemDataLoader>().GetItemData().buyPrice;
+
+        allProduceiDandAmt = new int[4, 2];
+
+        allProduceiDandAmt[0, 0] = 0;
+        allProduceiDandAmt[1, 0] = 1;
+        allProduceiDandAmt[2, 0] = 2;
+        allProduceiDandAmt[3, 0] = 3;
+
+        allProduce.AddRange(GameObject.FindGameObjectsWithTag("produce"));
+
+        for (int i = 0; i < allProduce.Count; i++)
+        {
+            if (allProduce[i].GetComponent<ItemDataLoader>().GetItemData().name == "apple")
+                allProduceiDandAmt[0, 1] += 1;
+            else if (allProduce[i].GetComponent<ItemDataLoader>().GetItemData().name == "orange")
+                allProduceiDandAmt[1, 1] += 1;
+            else if (allProduce[i].GetComponent<ItemDataLoader>().GetItemData().name == "potato")
+                allProduceiDandAmt[2, 1] += 1;
+            else if (allProduce[i].GetComponent<ItemDataLoader>().GetItemData().name == "banana")
+                allProduceiDandAmt[3, 1] += 1;
+        }
+
+        produceToBuy = new int[4, 2];
+     
+        init = true;
+
+        if (GameObject.FindObjectOfType<TutorialManager>() == null)
+            GameObject.FindObjectOfType<CustomerSpawnScript>().StartCoroutineSpawning();
+    }
+
+    public void CheckCanOrder(string itemToOrder,string objectTag)
+    {
+        switch(objectTag)
+        {
+            case "produce":
+                ProduceOrder(itemToOrder);
+                break;
+        }
+    }
+
+    public void ProduceOrder(string itemToOrder)
+    {
+        int indexOfProduce = 0;
+     
+        //Check which produce it is and get the index it would be in the list
+        switch (itemToOrder)
+        {
+            //Produce
+            case "apple":
+                indexOfProduce = 0;
+                selectedProduce = applePrefab;
+                break;
+
+            case "orange":
+                indexOfProduce = 1;
+                selectedProduce = orangePrefab;
+                break;
+
+            case "potato":
+                indexOfProduce = 2;
+                selectedProduce = potatoPrefab;
+                break;
+
+            case "banana":
+                indexOfProduce = 3;
+                selectedProduce = bananaPrefab;
+                break;
+        }
+
+
+        //Check if player can buy it
+        if(Toolbox.Instance.GetObject<GameManagerScript>("GameManagerScript").GetMoney() >= buyPrices[indexOfProduce])
+        {
+            GameObject[] shelfs = GameObject.FindGameObjectsWithTag("Shelf");
+            for (int i = 0; i < shelfs.Length; i++)
+            {
+                if (shelfs[i].GetComponent<ShelfScript>().itemToHold == itemToOrder)
+                {
+                    //Buy 
+                    if (shelfs[i].GetComponent<ShelfScript>().CanStock())
+                    {
+                        GameObject desiredItemToShelf = Instantiate(selectedProduce);
+                        desiredItemToShelf.transform.position = shelfs[i].transform.position;
+                        desiredItemToShelf.transform.parent = shelfs[i].transform.parent;
+                        desiredItemToShelf.name = selectedProduce.name + produceID.ToString();
+                        allProduce.Add(desiredItemToShelf);
+                        allProduceiDandAmt[indexOfProduce, 1]++;
+                        produceID++;
+                        Toolbox.Instance.GetObject<GameManagerScript>("GameManagerScript").RemoveMoney(buyPrices[indexOfProduce]);
+                        Toolbox.Instance.GetObject<GameManagerScript>("GameManagerScript").UpdateMoney();
+                        break;
+                    }
+                }
+            }
+        }  
+    }
+
+    public void FreshStart()
+    {
+        allProduce.Clear();
+        produceObjectsToBuy.Clear();
+    }
+    public float GetPrice(int index)
+    {
+        return buyPrices[index];
+    }
+
+    public bool isInit() { return init; }
+}

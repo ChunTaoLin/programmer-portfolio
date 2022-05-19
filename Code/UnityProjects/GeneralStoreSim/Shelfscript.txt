@@ -1,0 +1,153 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.UI;
+using UnityEngine;
+
+public class ShelfScript : MonoBehaviour
+{
+    [SerializeField] List<GameObject> items = new List<GameObject>();
+    [SerializeField] int numberLimit = 3;
+    int currentStock = 0;
+    public string itemToHold;
+
+    Material greenTransparentMat;
+    Material originalMat;
+    GameObject UIManager;
+
+    private void Start()
+    {
+        UIManager = GameObject.Find("UIManager");
+        originalMat = gameObject.GetComponent<MeshRenderer>().material;
+        greenTransparentMat = Resources.Load("Materials/TransparentGreen") as Material;
+    }
+
+    private void OnMouseOver()
+    {
+        if(UIManager.GetComponent<UIManager>().GetShelfField().IsActive() == false && UIManager.GetComponent<UIManager>().AnyUIPanelsActive())
+        {
+            gameObject.GetComponent<MeshRenderer>().material = greenTransparentMat;
+            if (Input.GetMouseButtonDown(0))
+            {
+                //Check if user is looking to demolish
+                if(UIManager.GetComponent<UIManager>().GetDemolishUIObject().activeSelf == true)
+                {
+                    UIManager.GetComponent<UIManager>().GetShelfField().gameObject.SetActive(false);
+                    UIManager.GetComponent<UIManager>().SetItemSelected(gameObject);
+                    UIManager.GetComponent<UIManager>().GetDemolishConfirmUIObject().SetActive(true);
+                }
+                //Check if User is looking to move
+                else if (UIManager.GetComponent<UIManager>().GetMovingUIObject().activeSelf == true)
+                {
+                    UIManager.GetComponent<UIManager>().GetShelfField().gameObject.SetActive(false);
+                    UIManager.GetComponent<UIManager>().SetItemSelected(gameObject);
+                    Toolbox.Instance.GetObject<BuildManager>("BuildManager").ResetBuildingMarkerAndItems();
+                    Toolbox.Instance.GetObject<BuildManager>("BuildManager").SetMoveObjectToMarker(gameObject.transform.root.gameObject);
+                    Toolbox.Instance.GetObject<BuildManager>("BuildManager").setConfirmStatus(true);
+                    Toolbox.Instance.GetObject<BuildManager>("BuildManager").ToggleBuildMarkerMoveMode();
+                }
+                //else its probably wanting to change the shelf items
+                else 
+                {
+                    UIManager.GetComponent<UIManager>().SetItemSelected(gameObject);
+                    UIManager.GetComponent<UIManager>().ToggleChangeShelfUI(gameObject);
+                }
+                   
+            }
+        }
+
+           
+    }
+
+    private void OnMouseExit()
+    {
+        gameObject.GetComponent<MeshRenderer>().material = originalMat;
+    }
+    
+    /*When an item appears/bought it spawns to location of part of the shelf, 
+    *The trigger enter will check if the item has tag of produce, if THIS shelf can hold more items, and if the item 
+    *matches the one the player wants to put here
+    */
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.gameObject.CompareTag("produce") && items.Count < numberLimit && other.GetComponent<ItemDataLoader>().GetItemData().name == itemToHold)
+        {
+            if(!items.Contains(other.gameObject))
+            {
+                other.GetComponent<ItemDataLoader>().GetItemData().assignedShelf = gameObject;
+                items.Add(other.gameObject);
+                AddCurrentItemStock();
+            }
+              
+        }
+    }
+
+    public int GetItemLimit() { return numberLimit; }
+
+    public int GetCurrentItemStock() { return currentStock; }
+
+    public void AddCurrentItemStock() { currentStock++; }
+    public void DeduceCurrentItemStock() { currentStock--; }
+    public bool CanStock() 
+    {
+        if(currentStock < numberLimit)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    public void SetShelvedItem(string item)
+    {
+        itemToHold = item;
+    }
+
+    public List<GameObject> GetShelfItems() { return items; } 
+
+    public void ClearShelf()
+    {
+       
+        foreach (GameObject item in items)
+        {
+            // item.SetActive(false);
+            if(item != null)
+            switch(item.tag)
+            {
+                case "produce":
+                    ClearShelfOfProduce(item);
+                    Destroy(item);
+                    break;        
+            }
+          
+        }
+        items.Clear();
+    }
+
+    void ClearShelfOfProduce(GameObject item)
+    {
+        int indexOfProduce = 0;
+
+        //Check which produce it is and get the index it would be in the list
+        switch (item.name)
+        {
+            //Produce
+            case "Apple":
+                indexOfProduce = 0;
+                break;
+
+            case "Orange":
+                indexOfProduce = 1;
+                break;
+
+            case "Potato":
+                indexOfProduce = 2;
+                break;
+
+            case "Banana":
+                indexOfProduce = 3;
+                break;
+        }
+        Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce.Remove(item);
+        Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduceiDandAmt[indexOfProduce, 1]--;
+  
+    }
+}

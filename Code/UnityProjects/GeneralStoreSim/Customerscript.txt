@@ -1,0 +1,316 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.AI;
+using UnityEngine;
+
+public class CustomerScript : MonoBehaviour
+{
+    public float initialMoney = 5.0f;
+    public float moneyOnHand = 5.0f;
+    public int numberOfItemsInCart = 0;
+    public int numberOfItemsDesired = 1;
+    public string itemWanted = "apple";
+    public string typeWanted = "produce";
+    public bool needNewItem = true;
+    bool items = false;
+
+    public float moneyToPay = 0.0f;
+    public bool done = false;
+    [SerializeField] bool hasDesiredItem = false;
+    [SerializeField] bool startCountDown = false;
+
+    [SerializeField] float timeToLeave = 360f;
+    [SerializeField] float initialTimeToLeave = 30f;
+
+    GameObject objectInHand;
+    [SerializeField] List<GameObject> shoppingCart;
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        shoppingCart = new List<GameObject>();
+        Spawned();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        //Head to the Door/Exit now that shopping is done
+        if (done)
+        {
+            gameObject.GetComponent<AgentMove>().destinationReached = false;
+            gameObject.GetComponent<AgentMove>().goal = GameObject.Find("CustomerSpawner").GetComponent<CustomerSpawnScript>().GetRandomCustomerSpawnPt();
+        }
+        else
+        {
+            //Head to Checkout if the customer has the number of items in the cart that they wanted
+            if (numberOfItemsInCart == numberOfItemsDesired)
+            {
+                gameObject.GetComponent<AgentMove>().destinationReached = false;
+                gameObject.GetComponent<AgentMove>().goal = GameObject.Find("Checkout").transform.Find("CheckoutPt").transform;
+            }
+
+            //If the Customer hasn't found the item they want start counting down
+            if (shoppingCart.Count == 0 && startCountDown || hasDesiredItem == false && startCountDown)
+            {
+                timeToLeave -= 0.1f;
+            }
+            //Once the time is up, have nothing, than you leave
+            if (timeToLeave <= 0 && shoppingCart.Count == 0)
+                done = true;
+
+            // go to Checkout to buy what you have
+            else if (timeToLeave <= 0 && shoppingCart.Count > 0)
+            {
+                gameObject.GetComponent<AgentMove>().destinationReached = false;
+                gameObject.GetComponent<AgentMove>().goal = GameObject.Find("Checkout").transform.Find("CheckoutPt").transform;
+            }
+        }
+       
+           
+    }
+
+    public void Spawned()
+    {
+        //if the AI needs a new item and has more than 0 money. And if the cart still needs to be filled run
+        if (needNewItem == true && moneyOnHand > 0 && numberOfItemsInCart < numberOfItemsDesired)
+        {
+            //select from random the item and type of item wanted.
+            SelectTypeOfItem();
+            SelectItemInType();
+
+            hasDesiredItem = false;
+
+            //This goes into the stock manager script to find if it has any produce and if it has the one customer is looking for.
+            for (int i = 0; i < Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce.Count; i++)
+            {
+                if (Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce[i].GetComponent<ItemDataLoader>().GetItemData().name == itemWanted
+                      && Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce[i].activeSelf == true)
+                {
+                    gameObject.GetComponent<AgentMove>().goal = Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce[i].transform;
+                    hasDesiredItem = true;
+                    gameObject.GetComponent<NavMeshAgent>().enabled = true;
+                    break;
+                }
+
+            }       
+        }
+   
+    }
+
+    IEnumerator ThinkWhatToGetNext()
+    {
+        yield return new WaitForSeconds(1.5f);
+        items = !items;
+    }
+
+    //This function will choose a random type of product they are looking for
+    void SelectTypeOfItem()
+    {
+        int i = Random.Range(0, 1);
+        switch(i)
+        {
+            case 0:
+                typeWanted = "produce";
+                break;
+
+            case 1:
+                typeWanted = "animalProduce";
+                break;
+
+            case 2:
+                typeWanted = "drugs";
+                break;
+
+        }
+        hasDesiredItem = false;
+    }
+
+    void SelectItemInType()
+    {
+        int i = Random.Range(0, 4);
+        switch (typeWanted)
+        {
+            case "produce":
+              
+                switch (i)
+                {
+                    case 0:
+                        itemWanted = "apple";
+                        break;
+                    case 1:
+                        itemWanted = "orange";
+                        break;
+                    case 2:
+                        itemWanted = "potato";
+                        break;
+                    case 3:
+                        itemWanted = "banana";
+                        break;
+                }
+
+                break;
+
+            case "animalProduce":
+                i = Random.Range(0, 1);
+                switch (i)
+                {
+                    case 0:
+                        itemWanted = "milk";
+                        break;
+                }
+                break;
+
+            case "drugs":
+                i = Random.Range(0, 1);
+                switch (i)
+                {
+                    case 0:
+                         itemWanted = "advil";
+                        break;
+                }
+                break;
+
+        }
+        hasDesiredItem = false;
+    }
+
+    // Touches Door
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.gameObject.CompareTag("customerSpawnPt") && done)
+        {
+            ResetData();
+            gameObject.SetActive(false);
+            GameObject.Find("CustomerSpawner").GetComponent<CustomerSpawnScript>().RemoveCurrentNumberOfCustomers();
+        }
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        if (other.gameObject.CompareTag("customerSpawnPt") && done)
+        {
+            ResetData();
+            gameObject.SetActive(false);
+            GameObject.Find("CustomerSpawner").GetComponent<CustomerSpawnScript>().RemoveCurrentNumberOfCustomers();
+        }
+        //Check if the other object is in fact the item the customer wants
+        if (other.gameObject.tag == typeWanted && other.GetComponent<ItemDataLoader>().GetItemData().name == itemWanted && numberOfItemsInCart < numberOfItemsDesired)
+        {
+            gameObject.GetComponent<AgentMove>().destinationReached = true;
+            if(moneyOnHand - moneyToPay > 0)
+            {
+                hasDesiredItem = true;
+                objectInHand = other.gameObject;
+                shoppingCart.Add(objectInHand);
+                moneyToPay += other.GetComponent<ItemDataLoader>().GetItemData().sellPrice;
+                numberOfItemsInCart++;
+             
+                if(typeWanted == "produce")
+                {
+                    switch (itemWanted)
+                    {
+                        case "apple":
+                            Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduceiDandAmt[0, 1] -= 1;
+                            break;
+
+                        case "orange":
+                            Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduceiDandAmt[1, 1] -= 1;
+                            break;
+
+                        case "potato":
+                            Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduceiDandAmt[2, 1] -= 1;
+                            break;
+                        case "banana":
+
+                            Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduceiDandAmt[3, 1] -= 1;
+                            break;
+                    }
+
+                    Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce.Remove(other.gameObject);
+                    Toolbox.Instance.GetObject<ShelfManager>("ShelfManager").RemoveFromShelf(other.gameObject);
+
+                }
+
+
+                //Select new item to go for
+                SelectTypeOfItem();
+                SelectItemInType();
+            }   
+        }
+
+        //If they got what they want, then head to checkout
+        if(other.gameObject.CompareTag("Checkout"))
+        {
+            if(!done)
+            {
+                Toolbox.Instance.GetObject<GameManagerScript>("GameManagerScript").AddMoney(moneyToPay);
+                Toolbox.Instance.GetObject<GameManagerScript>("GameManagerScript").AddCustomersServed();
+                Toolbox.Instance.GetObject<GameManagerScript>("GameManagerScript").UpdateMoney();
+                done = true;
+               
+                foreach(GameObject obj in shoppingCart)
+                {
+                    Toolbox.Instance.GetObject<GameManagerScript>("GameManagerScript").UpdateItemsSoldBook(obj.GetComponent<ItemDataLoader>().GetItemData());
+                }
+                
+                shoppingCart.Clear();
+            }
+    
+        }
+
+        //Else this will find a new item and find path to said item
+        else if (numberOfItemsInCart < numberOfItemsDesired && other.gameObject.tag != typeWanted || numberOfItemsInCart < numberOfItemsDesired && other.GetComponent<ItemDataLoader>().GetItemData().name != itemWanted)
+        {
+            hasDesiredItem = false;
+
+            StartCoroutine(ThinkWhatToGetNext());
+            if(items)
+            {
+                SelectTypeOfItem();
+                SelectItemInType();
+                //Makes sure there is even any items in the whole store before iterating
+                if(Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce.Count == 0)
+                {
+                    startCountDown = true;
+                }
+
+                for (int i = 0; i < Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce.Count; i++)
+                {
+                    if (Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce[i].GetComponent<ItemDataLoader>().GetItemData().name == itemWanted
+                        && Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce[i].activeSelf == true)
+                    {
+                        startCountDown = false;
+                        gameObject.GetComponent<AgentMove>().goal = Toolbox.Instance.GetObject<StockManagerScript>("StockManagerScript").allProduce[i].transform;
+                        break;
+                    }
+                
+
+                }
+
+             
+            }
+        
+        }
+    }
+
+
+    //Resets all of the data so it is a fresh customer coming in.
+    public void ResetData()
+    {
+        moneyOnHand = initialMoney;
+        moneyToPay = 0;
+        numberOfItemsInCart = 0;
+        needNewItem = true;
+        done = false;
+       // startCountDown = false;
+        timeToLeave = initialTimeToLeave;
+        shoppingCart.Clear();
+    }
+
+    public void ResetTimer()
+    {
+        timeToLeave = initialTimeToLeave;
+        startCountDown = true;
+    }
+}

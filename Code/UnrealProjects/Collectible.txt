@@ -1,0 +1,35 @@
+//used basically to create custom enums for use ingame
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "Collectible.generated.h"
+
+UENUM(BlueprintType)
+enum class CollectibleType : uint8
+{
+	EJOURNAL UMETA(DisplayName = "Journal"),
+	EFLASHLIGHT UMETA(DisplayName = "Flashlight"),
+	ENOTES UMETA(DisplayName = "Note"),
+	ERECORDINGS UMETA(DisplayName = "Recording"),
+	EKEYCARDS UMETA(DisplayName = "Keycard")
+};
+
+UCLASS()
+class LASTONELEFT_API ACollectible : public AActor
+{
+	GENERATED_BODY()
+	
+public:	
+	// Sets default values for this actor's properties
+	ACollectible();	
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	CollectibleType item;
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+
+};

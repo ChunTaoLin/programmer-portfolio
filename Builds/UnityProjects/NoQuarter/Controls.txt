@@ -1,9 +1,0 @@
-SOLO
-WASD movement
-Left Mouse Click for Attack.
-
-2 Player Coop
-Two controllers
-
-Left Stick for movement
-X for attack
